@@ -5,8 +5,9 @@ const mime = require('mime');
 const dotenv = require('dotenv')
 const mongoose = require('mongoose');
 const User = require("./model/User");
-const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const verify = require('./routes/verifyToken')
 const { registerValidation, loginValidation } = require('./validation')
 
 const app = express();
@@ -38,7 +39,7 @@ mongoose.connect(process.env.DB_CONNECT, { useNewUrlParser: true, useUnifiedTopo
 
 app.use(express.static('public'));
 
-app.get("/", function(request, response){
+app.get("/", verify, function(request, response){
 	response.render('index', {});
 });
 
@@ -85,7 +86,8 @@ app.post('/login', jsonParser, async (request, response) => {
 			if (!validPassword){
 				return response.status(400).send('Password is wrong');
 			} else {
-				return response.send('Logged in');
+				const token = jwt.sign({_id: user._id}, process.env.TOKEN_SECRET);
+				response.header('auth-token', token).send(token);
 			}
 		}
 	}
