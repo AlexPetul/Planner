@@ -5,7 +5,9 @@ const mime = require('mime');
 const dotenv = require('dotenv')
 const mongoose = require('mongoose');
 const User = require("./model/User");
-const { registerValidation } = require('./validation')
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs')
+const { registerValidation, loginValidation } = require('./validation')
 
 const app = express();
 
@@ -49,16 +51,42 @@ app.post("/register", jsonParser, async (request, response) => {
 	if (error) {
 		return response.status(400).send(error.details[0].message);
 	} else {
-		const user = new User({
-			name: request.body.name,
-			email: request.body.email,
-			password: request.body.password
-		});
-		try {
-			const savedUser = await user.save();
-			response.send(savedUser);
-		} catch (err) {
-			response.status(400).send(err);
+		const emailExists = await User.findOne({email: request.body.email});
+		if (emailExists) {
+			return response.status(400).send('Email already exists');
+		} else {
+			const salt = await bcrypt.genSalt(10);
+			const hashedPassword = await bcrypt.hash(request.body.password, salt);
+			const user = new User({
+				name: request.body.name,
+				email: request.body.email,
+				password: hashedPassword
+			});
+			try {
+				const savedUser = await user.save();
+				response.send(savedUser);
+			} catch (err) {
+				response.status(400).send(err);
+			}
+		}
+	}
+});
+
+app.post('/login', jsonParser, async (request, response) => {
+	const { error } = loginValidation(request.body);
+	if (error) {
+		return response.status(400).send(error.details[0].message);
+	} else {
+		const user = await User.findOne({email: request.body.email});
+		if (!user) {
+			return response.status(400).send('Email or password is wrong.');
+		} else {
+			const validPassword = await bcrypt.compare(request.body.password, user.password);
+			if (!validPassword){
+				return response.status(400).send('Password is wrong');
+			} else {
+				return response.send('Logged in');
+			}
 		}
 	}
 });
