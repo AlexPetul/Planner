@@ -8,7 +8,59 @@
 	<link rel="stylesheet" type="text/css" href="css/styles.css">
 </head>
 <body>
-	
+
+	<div class="modal fade" id="modalLoginForm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<form class="modal-content" method="POST" action="/api/login">
+				<div class="modal-header text-center">
+					<h4 class="modal-title w-100 font-weight-bold">Sign in</h4>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body mx-3">
+					<div class="md-form mb-3">
+						<input placeholder="Email" type="email" name="email" class="form-control" required>
+					</div>
+					<div class="md-form mb-3">
+						<input placeholder="Password" type="password" name="password" class="form-control" required>
+					</div>
+				</div>
+				<div class="modal-footer d-flex justify-content-center">
+					<input type="submit" class="btn btn-success" value="Login">
+					<button class="btn btn-info" id="register-button">Registration</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<div class="modal fade" id="modalRegistrationForm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<form action="/api/register" method="POST" class="modal-content">
+				<div class="modal-header text-center">
+					<h4 class="modal-title w-100 font-weight-bold">Create new account</h4>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body mx-3">
+					<div class="md-form mb-3">
+						<input placeholder="Name" type="text" name="reg-name" class="form-control">
+					</div>
+					<div class="md-form mb-3">
+						<input placeholder="Email" type="email" name="reg-email" class="form-control">
+					</div>
+					<div class="md-form mb-3">
+						<input placeholder="Password" type="password" name="reg-password" class="form-control">
+					</div>
+				</div>
+				<div class="modal-footer d-flex justify-content-center">
+					<input type="submit" class="btn btn-info" value="Sign up">
+				</div>
+			</form>
+		</div>
+	</div>
+
 	<div class="container">
 		<form id="create-plan" action="/api/plans" class="row" enctype="multipart/form-data">
 			<div class="col-md-12" align="center">
@@ -49,6 +101,7 @@
 	</div>
 
 	<script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="js/utils.js"></script>
 
 </body>

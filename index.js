@@ -7,11 +7,16 @@ const mongoose = require('mongoose');
 const User = require("./model/User");
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-const verify = require('./routes/verifyToken')
+const verify = require('./middlewares/verifyToken')
+const session = require('express-session')
 const { registerValidation, loginValidation } = require('./validation')
+const fs = require("fs");
+const bodyParser = require("body-parser");
+const jsonParser = bodyParser.json();
 
 const app = express();
 
+// STORAGE CONFIG
 var storage = multer.diskStorage({
 	destination: function (req, file, cb) {
 		cb(null, 'uploads/')
@@ -22,37 +27,40 @@ var storage = multer.diskStorage({
 		});
 	}
 });
-
 var upload = multer({ storage: storage });
 
 app.set('views', 'templates');
 app.set('view engine', 'hbs');
 
-const fs = require("fs");
-const bodyParser = require("body-parser");
-const jsonParser = bodyParser.json();
-
+// DATABASE CONNECT
 dotenv.config();
 mongoose.connect(process.env.DB_CONNECT, { useNewUrlParser: true, useUnifiedTopology: true },
 	() => console.log("connected to db!")
-);
+	);
 
+// MIDDLEWARE
 app.use(express.static('public'));
 
-app.get("/", verify, function(request, response){
+app.use(session({
+	secret: 'keyboard cat',
+	cookie: { maxAge: 60000000 },
+	resave: true,
+	saveUninitialized: true
+}));
+
+
+// ROUTES
+app.get("/", function(request, response){
 	response.render('index', {});
 });
 
-app.get("/register", function(request, response){
-	response.send("<h1>da</h1>");
-});
-
-app.post("/register", jsonParser, async (request, response) => {
+app.post("/api/register", jsonParser, async (request, response) => {
 	const { error } = registerValidation(request.body);
 	if (error) {
 		return response.status(400).send(error.details[0].message);
 	} else {
 		const emailExists = await User.findOne({email: request.body.email});
+		console.log(request.body.email);
 		if (emailExists) {
 			return response.status(400).send('Email already exists');
 		} else {
@@ -65,7 +73,7 @@ app.post("/register", jsonParser, async (request, response) => {
 			});
 			try {
 				const savedUser = await user.save();
-				response.send(savedUser);
+				response.send(200).send("User created");
 			} catch (err) {
 				response.status(400).send(err);
 			}
@@ -73,21 +81,22 @@ app.post("/register", jsonParser, async (request, response) => {
 	}
 });
 
-app.post('/login', jsonParser, async (request, response) => {
+app.post('/api/login', jsonParser, function(request, response) {
 	const { error } = loginValidation(request.body);
 	if (error) {
 		return response.status(400).send(error.details[0].message);
 	} else {
-		const user = await User.findOne({email: request.body.email});
+		const user = User.findOne({email: request.body.email});
 		if (!user) {
 			return response.status(400).send('Email or password is wrong.');
 		} else {
-			const validPassword = await bcrypt.compare(request.body.password, user.password);
+			const validPassword = bcrypt.compare(request.body.password, user.password);
 			if (!validPassword){
 				return response.status(400).send('Password is wrong');
 			} else {
 				const token = jwt.sign({_id: user._id}, process.env.TOKEN_SECRET);
-				response.header('auth-token', token).send(token);
+				request.session.token = token;
+				response.redirect('/');
 			}
 		}
 	}
@@ -104,12 +113,12 @@ app.get('/download', function(request, response){
 	response.download(file);
 });
 
-app.post("/api/create-plan", upload.single('attachment'), function(request, response){
+app.post("/api/create-plan", verify, upload.single('attachment'), function(request, response){
 	if (!request.body) {
 		return response.sendStatus(400);
 	}
 	else {
-		var plan_data = JSON.parse(request.body.data);
+		var planData = JSON.parse(request.body.data);
 		var data = fs.readFileSync("plans.json", "utf8");
 		var plans = JSON.parse(data);
 		var id = 0;
@@ -123,19 +132,18 @@ app.post("/api/create-plan", upload.single('attachment'), function(request, resp
 			}
 			id = Math.max.apply(null, ids) + 1;
 		}
-		var title = plan_data.title;
-		var content = plan_data.content;
-		var deadline = plan_data.deadline;
+		var title = planData.title;
+		var content = planData.content;
+		var deadline = planData.deadline;
 		var status = 'Не прочитано';
-		var new_plan = { id: id, status: status, title: title, content: content, deadline: deadline };
+		var newPlan = { id: id, status: status, title: title, content: content, deadline: deadline };
 		if (typeof request.file !== 'undefined' && request.file){
-			var attachment_path = request.file.path;
-			new_plan['attachment'] = attachment_path;
+			newPlan['attachment'] = request.file.path;
 		}
-		plans.push(new_plan);
-		var new_data = JSON.stringify(plans);
-		fs.writeFileSync("plans.json", new_data);
-		response.send(new_plan);
+		plans.push(newPlan);
+		var newData = JSON.stringify(plans);
+		fs.writeFileSync("plans.json", newData);
+		response.send(newPlan);
 	}
 });
 
@@ -143,15 +151,15 @@ app.delete("/api/delete-plan", jsonParser, function(request, response){
 	var plan_id = request.body.plan_id;
 	var data = fs.readFileSync("plans.json", "utf8");
 	var plans = JSON.parse(data);
-	var is_plan_found = false;
+	var isPlanFound = false;
 	for (var index = 0; index < plans.length; ++index) {
 		if (plans[index].id == plan_id) {
 			plans.splice(index, 1);
-			is_plan_found = true;
+			isPlanFound = true;
 			break;
 		}
 	}
-	if (!is_plan_found) {
+	if (!isPlanFound) {
 		response.sendStatus(404);
 	}
 	else{
@@ -161,13 +169,13 @@ app.delete("/api/delete-plan", jsonParser, function(request, response){
 });
 
 app.put("/api/change-plan-status", jsonParser, function(request, response){
-	var plan_id = request.body.plan_id;
-	var new_status = request.body.new_status;
+	var planId = request.body.plan_id;
+	var newStatus = request.body.new_status;
 	var data = fs.readFileSync("plans.json", "utf8");
 	var plans = JSON.parse(data);
 	for (var index = 0; index < plans.length; ++index) {
-		if (plans[index].id == plan_id) {
-			plans[index].status = new_status;
+		if (plans[index].id == planId) {
+			plans[index].status = newStatus;
 			break;
 		}
 	}
@@ -176,20 +184,20 @@ app.put("/api/change-plan-status", jsonParser, function(request, response){
 });
 
 app.get("/api/get-plans-by-status", function(request, response){
-	var sort_query = request.query.sort_query;
-	var new_plan_list = [];
+	var sortQuery = request.query.sortQuery;
+	var newPlanList = [];
 	var data = fs.readFileSync("plans.json", "utf8");
 	var plans = JSON.parse(data);
-	if (sort_query == 'Все') {
+	if (sortQuery == 'Все') {
 		response.send(plans);
 	}
 	else{
 		for (var index = 0; index < plans.length; ++index) {
-			if (plans[index].status == sort_query) {
-				new_plan_list.push(plans[index]);
+			if (plans[index].status == sortQuery) {
+				newPlanList.push(plans[index]);
 			}
 		}
-		response.send(new_plan_list);
+		response.send(`newPlanList`);
 	}
 });
 

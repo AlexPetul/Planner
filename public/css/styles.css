@@ -66,4 +66,14 @@ body {
         #plan-list div div span:last-of-type i {
           color: red; }
 
+#registration-form, #login-form {
+  margin: 16vh auto 0 auto;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 30px;
+  border-radius: 5px; }
+  #registration-form input, #login-form input {
+    margin-bottom: 10px; }
+    #registration-form input[type="submit"], #login-form input[type="submit"] {
+      width: 100%; }
+
 /*# sourceMappingURL=styles.css.map */

@@ -94,6 +94,9 @@ $(document).ready(function(){
 			success: function(data){
 				$('#create-plan').trigger('reset');
 				addPlanItem(data);
+			},
+			error: function(data){
+				$('#modalLoginForm').modal('toggle');
 			}
 		});
 	});
@@ -122,6 +125,11 @@ $(document).ready(function(){
 		});
 	});
 
+	$('#register-button').on('click', function(){
+		$('#modalLoginForm').modal('hide');
+		$('#modalRegistrationForm').modal('toggle');
+	});
+
 	$('#plan-list').on('click', '.delete-plan', function(e) {
 		e.preventDefault();
 		var plan_id = $(this).attr('plan-id');
@@ -134,7 +142,6 @@ $(document).ready(function(){
 				$('.plan-item-wrapper-' + plan_id).remove();
 			},
 			error: function(data) {
-				alert("ERROR");
 			}
 		})
 	});
@@ -181,6 +188,48 @@ $(document).ready(function(){
 					$('#plan-list select:last-child').val(plan.status);
 				})
 				fillPlansStatus(data);
+			}
+		});
+	});
+
+	$('#modalRegistrationForm input[type="submit"]').on('click', function(){
+		var name = $('input[name="reg-name"]').val();
+		var email = $('input[name="reg-email"]').val();
+		var password = $('input[name="reg-password"]').val();
+		$.ajax({
+			type: "POST",
+			url: "/api/register",
+			contentType: "application/json",
+			data: JSON.stringify({
+				name: name,
+				email: email,
+				password: password
+			}),
+			success: function(data){
+				window.location.replace("/");
+			},
+			error: function(data){
+
+			}
+		});
+	});
+
+	$('#modalLoginForm input[type="submit"]').on('click', function(){
+		var email = $('input[name="email"]').val();
+		var password = $('input[name="password"]').val();
+		$.ajax({
+			type: "POST",
+			url: "/api/login",
+			contentType: "application/json",
+			data: JSON.stringify({
+				email: email,
+				password: password
+			}),
+			success: function(data){
+				
+			},
+			error: function(data){
+				
 			}
 		});
 	});
